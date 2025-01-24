@@ -8,5 +8,5 @@
         "service_worker": "src/background/index.js",
         "type": "module"
     },
-    "permissions": ["scripting", "activeTab"]
+    "permissions": ["scripting", "activeTab", "storage"]
 }

@@ -1,9 +1,12 @@
 let webSocket: WebSocket | null = null;
+let all_comments: IncomingComment[] = []; // to prevent showing duplicates
+
 type IncomingComment = {
     comment_id: number,
     message: string,
     poster: string,
     time_of_media: number,
+    created_at: Date
 }
 
 type OutgoingComment = {
@@ -54,6 +57,8 @@ function connect(tab: chrome.tabs.Tab) {
         chrome.scripting.executeScript({
             args: [media_id],
             func: (media_id) => {
+                let USERNAME = "Joe Schmoe"; // TODO: add this to local storage, and way to change username
+                let TIME_OF_MEDIA = 4;       // TODO: check video props for time
                 const loudmouthSidebarHTML = `
                     <style>
                         .loudmouth {
@@ -161,8 +166,8 @@ function connect(tab: chrome.tabs.Tab) {
                         type: 'SEND_COMMENT',
                         data: {
                             message: commentText,
-                            poster: "Matthew",
-                            time_of_media: 3,
+                            poster: USERNAME,
+                            time_of_media: TIME_OF_MEDIA,
                             media_id
                         }
                     });
@@ -175,23 +180,29 @@ function connect(tab: chrome.tabs.Tab) {
     };
 
     webSocket.onmessage = (event) => {
-        const message: IncomingComment = JSON.parse(event.data)
+        const incoming_msgs: IncomingComment[] = JSON.parse(event.data)
+        const messages = incoming_msgs.filter((incoming_msg)=> 
+            !all_comments.some((existing_msg)=> existing_msg.comment_id == incoming_msg.comment_id)
+        )
+        all_comments = [...all_comments, ...messages];
         chrome.scripting.executeScript({
-            args: [message],
-            func: (messageData) => {
-                const div = document.createElement('div');
-                div.className = 'comment-row';
-                div.id = messageData.comment_id.toString();
-                div.innerHTML = `
-                    <p class="comment-content">
-                        <span class="comment-user">${messageData.poster}</span>
-                        ${messageData.message}
-                    </p>
-                    <div class="comment-metadata">
-                        ${messageData.time_of_media}
-                    </div>
-                `;
-                document.getElementById('loudmouth_comments')?.appendChild(div);
+            args: [messages],
+            func: (messages) => {
+                for (const messageData of messages) {
+                    const div = document.createElement('div');
+                    div.className = 'comment-row';
+                    div.id = messageData.comment_id.toString();
+                    div.innerHTML = `
+                        <p class="comment-content">
+                            <span class="comment-user">${messageData.poster}</span>
+                            ${messageData.message}
+                        </p>
+                        <div class="comment-metadata">
+                            ${messageData.time_of_media}
+                        </div>
+                    `;
+                    document.getElementById('loudmouth_comments')?.appendChild(div);
+                }
             },
             target: {
                 tabId: tab.id || 0
@@ -223,6 +234,7 @@ function disconnect() {
     }
 }
 
+// serves as connection checker, and updates server on where they are in video
 function keepAlive() {
     const keepAliveIntervalId = setInterval(() => {
         if (webSocket) {
