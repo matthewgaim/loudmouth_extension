@@ -57,7 +57,21 @@ function connect(tab: chrome.tabs.Tab) {
         chrome.scripting.executeScript({
             args: [media_id],
             func: (media_id) => {
-                let USERNAME = "Joe Schmoe"; // TODO: add this to local storage, and way to change username
+                // Get username saved on sync storage
+                let USERNAME = "";
+                chrome.storage.sync.get(['loudmouth_username'], function(items) {
+                    if (!items["loudmouth_username"]) {
+                        const name = prompt("Enter a username:") || "Yapper"
+                        chrome.storage.sync.set({'loudmouth_username': name}, function() {
+                            console.log('Username saved');
+                          });
+                          USERNAME = name;
+                    } else {
+                        USERNAME = items["loudmouth_username"];
+                        console.log("Logged in as", items["loudmouth_username"])
+                    }
+                  });
+
                 let TIME_OF_MEDIA = 4;       // TODO: check video props for time
                 const loudmouthSidebarHTML = `
                     <style>
