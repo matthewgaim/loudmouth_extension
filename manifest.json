@@ -8,5 +8,11 @@
         "service_worker": "src/background/index.js",
         "type": "module"
     },
+    "web_accessible_resources": [
+        {
+            "resources": ["src/background/inject.js"],
+            "matches": ["<all_urls>"]
+        }
+    ],
     "permissions": ["scripting", "activeTab", "storage"]
 }
