@@ -1,12 +1,15 @@
 {
     "manifest_version": 3,
-    "name": "loudmouth",
+    "name": "Loudmouth",
     "version": "1.0.0",
     "minimum_chrome_version": "116",
     "action": {},
     "background": {
         "service_worker": "src/background/index.js",
         "type": "module"
+    },
+    "icons": {
+        "128": "icon128.png"
     },
     "web_accessible_resources": [
         {
