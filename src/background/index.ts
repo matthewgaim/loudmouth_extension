@@ -47,10 +47,15 @@ function getUsername(): Promise<string> {
     });
 }
 
-async function setUsername() {
-    const name = prompt("Enter a username:") || "Yapper";
-    await chrome.storage.sync.set({ 'loudmouth_username': name });
-    console.log('Username saved');
+function setUsername(tab: chrome.tabs.Tab) {
+    chrome.scripting.executeScript({
+        func: () => {
+            const name = prompt("Enter a username:") || "Yapper";
+            chrome.storage.sync.set({ 'loudmouth_username': name });
+            console.log('Username saved');
+        },
+        target: { tabId: tab.id || 0 }
+    })
 }
 
 async function connect(tab: chrome.tabs.Tab) {
@@ -65,7 +70,7 @@ async function connect(tab: chrome.tabs.Tab) {
     webSocket.onopen = async () => {
         console.log('WebSocket connection opened');
         const username = await getUsername();
-        if (username === "")  setUsername();
+        if (username === "") setUsername(tab);
         console.log("Logged in as", username);
         createSidebar(tab, media_id, username);
     };
@@ -152,6 +157,22 @@ function addCommentsInDOM(messages: IncomingComment[], tab: chrome.tabs.Tab) {
         func: (messages) => {
             const commentsContainer = document.getElementById('loudmouth_comments');
             messages.forEach((messageData) => {
+                let time_str = "";
+                const total_seconds = messageData.time_of_media;
+                const hour = Math.floor(total_seconds / 3600);
+                const minute = Math.floor((total_seconds % 3600) / 60);
+                const seconds = total_seconds % 60;
+
+                // Format time properly
+                if (hour > 0) {
+                    time_str += (hour < 10 ? "0" : "") + hour + ":";
+                }
+
+                time_str += (minute < 10 ? "0" : "") + minute + ":";
+                time_str += (seconds < 10 ? "0" : "") + seconds;
+
+                if (total_seconds === 0) time_str = "00:00";
+
                 const div = document.createElement('div');
                 div.className = 'comment-row';
                 div.id = messageData.comment_id.toString();
@@ -160,7 +181,7 @@ function addCommentsInDOM(messages: IncomingComment[], tab: chrome.tabs.Tab) {
                         <span class="comment-user">${messageData.poster}</span>
                         ${messageData.message}
                     </p>
-                    <div class="comment-metadata">${messageData.time_of_media}</div>
+                    <div class="comment-metadata">${time_str}</div>
                 `;
                 commentsContainer?.appendChild(div);
             });
