@@ -18,7 +18,7 @@ type OutgoingComment = {
 };
 
 chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
-    if(webSocket){
+    if (webSocket) {
         disconnect();
         deleteLoudmouthHTML(tab);
     } else {
@@ -85,18 +85,121 @@ function createSidebar(tab: chrome.tabs.Tab, media_id: string, username: string)
         func: (media_id, username) => {
             const loudmouthSidebarHTML = `
                 <style>
-                    .loudmouth { background: #f5f5f5; border-radius: 4px; padding: 16px; font-family: Arial, sans-serif; color: #000; max-width: 400px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); position: absolute; }
-                    .loudmouth-comments { margin-bottom: 16px; max-height: 300px; overflow-y: auto; }
-                    .comment-row { padding: 8px 0; border-bottom: 1px solid #e0e0e0; }
-                    .comment-content { margin: 0; font-size: 14px; line-height: 1.4; }
-                    .comment-metadata { color: #666; font-size: 12px; margin-top: 4px; }
-                    .comment-user { color: #1a73e8; font-weight: 500; }
-                    .loudmouth-form { display: flex; gap: 8px; }
-                    .loudmouth-input { flex: 1; background: #fff; border: 1px solid #ccc; border-radius: 4px; padding: 8px 12px; color: #000; font-size: 14px; transition: border-color 0.2s ease; }
-                    .loudmouth-input:focus { outline: none; border-color: #1a73e8; }
-                    .loudmouth-submit { background: #1a73e8; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s ease; }
-                    .loudmouth-submit:hover { background: #185abc; }
+                    .watch-video {
+                        display: flex !important;
+                        gap: 24px;
+                        padding-right: 400px;
+                    }
+
+                    .watch-video--player-view {
+                        flex: 1;
+                        min-width: 0;
+                    }
+
+                    .loudmouth {
+                        background: #141414;
+                        border-radius: 4px;
+                        padding: 16px;
+                        font-family: Arial, sans-serif;
+                        color: #fff;
+                        width: 360px;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                        position: fixed;
+                        right: 24px;
+                        top: 68px;
+                        bottom: 24px;
+                        display: flex;
+                        flex-direction: column;
+                        z-index: 1000;
+                    }
+
+                    .loudmouth-comments {
+                        flex: 1;
+                        margin-bottom: 16px;
+                        overflow-y: auto;
+                        scrollbar-width: thin;
+                        scrollbar-color: #404040 #262626;
+                    }
+
+                    .comment-row {
+                        padding: 8px 0;
+                        border-bottom: 1px solid #404040;
+                    }
+
+                    .comment-content {
+                        margin: 0;
+                        font-size: 14px;
+                        line-height: 1.4;
+                        color: #fff;
+                    }
+
+                    .comment-metadata {
+                        color: #999;
+                        font-size: 12px;
+                        margin-top: 4px;
+                    }
+
+                    .comment-user {
+                        color: #e50914;
+                        font-weight: 500;
+                    }
+
+                    .loudmouth-form {
+                        display: flex;
+                        gap: 8px;
+                    }
+
+                    .loudmouth-input {
+                        flex: 1;
+                        background: #262626;
+                        border: 1px solid #404040;
+                        border-radius: 4px;
+                        padding: 8px 12px;
+                        color: #fff;
+                        font-size: 14px;
+                        transition: border-color 0.2s ease;
+                    }
+
+                    .loudmouth-input:focus {
+                        outline: none;
+                        border-color: #e50914;
+                    }
+
+                    .loudmouth-submit {
+                        background: #e50914;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        padding: 8px 16px;
+                        font-size: 14px;
+                        font-weight: 500;
+                        cursor: pointer;
+                        transition: background 0.2s ease;
+                    }
+
+                    .loudmouth-submit:hover {
+                        background: #f6121d;
+                    }
+
+                    .loudmouth-comments::-webkit-scrollbar {
+                        width: 8px;
+                    }
+
+                    .loudmouth-comments::-webkit-scrollbar-track {
+                        background: #262626;
+                    }
+
+                    .loudmouth-comments::-webkit-scrollbar-thumb {
+                        background: #404040;
+                        border-radius: 4px;
+                    }
+
+                    .loudmouth-comments::-webkit-scrollbar-thumb:hover {
+                        background: #4d4d4d;
+                    }
                 </style>
+
+                <!-- HTML -->
                 <div class="loudmouth">
                     <div id="loudmouth_comments" class="loudmouth-comments"></div>
                     <form id="loudmouth_comment_form" class="loudmouth-form">
@@ -105,13 +208,15 @@ function createSidebar(tab: chrome.tabs.Tab, media_id: string, username: string)
                     </form>
                 </div>
             `;
-            
-            document.body.insertAdjacentHTML("beforeend", loudmouthSidebarHTML);
+            const playerContainer = document.querySelector('.watch-video');
+            if(playerContainer) playerContainer.insertAdjacentHTML('beforeend', loudmouthSidebarHTML);
+            else console.log("Cant find element .watch-video");
+
             document.getElementById('loudmouth_comment_form')?.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const inputElement = document.getElementById('loudmouth_comment_input') as HTMLInputElement;
                 const commentText = inputElement.value;
-                
+
                 const script = document.createElement('script');
                 script.src = chrome.runtime.getURL('src/background/inject.js');
                 document.documentElement.appendChild(script);
@@ -133,12 +238,12 @@ function createSidebar(tab: chrome.tabs.Tab, media_id: string, username: string)
                 }, { once: true });
 
                 script.remove(); // Clean up the injected script
-                
+
             });
         },
         target: { tabId: tab.id || 0 }
     });
-    
+
 }
 
 function handleIncomingMessages(event: MessageEvent, tab: chrome.tabs.Tab) {
@@ -236,7 +341,7 @@ chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
     }
 });
 
-function getCurrentTimeAndPing(tab: chrome.tabs.Tab){
+function getCurrentTimeAndPing(tab: chrome.tabs.Tab) {
     chrome.scripting.executeScript({
         func: () => {
             const script = document.createElement('script');
